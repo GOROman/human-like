@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "human-like"
+version = "0.1.0"
+description = "Human-like typing for tmux panes with keyboard sound effects"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.0",
+    "numpy>=1.20",
+    "sounddevice>=0.4",
+    "soundfile>=0.12",
+]
+
+[project.scripts]
+human-like = "human_like.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/human_like"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
