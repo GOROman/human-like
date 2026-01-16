@@ -46,6 +46,7 @@ def send_text(
     speed: float = 1.0,
     typo_rate: float = 0.0,
     sound_callback: Callable[[str], None] | None = None,
+    shift_sound_callback: Callable[[], None] | None = None,
 ) -> None:
     """
     テキスト全体を人間らしいタイピングで送信
@@ -56,14 +57,19 @@ def send_text(
         speed: 速度倍率 (0より大きい値)
         typo_rate: ミスタイプ率 (0.0-1.0)
         sound_callback: 各文字送信時に呼ばれるコールバック（サウンド再生用）
+        shift_sound_callback: Shiftキー押下時に呼ばれるコールバック
 
     Raises:
         ValueError: speedが0以下、またはtypo_rateが0.0-1.0の範囲外の場合
     """
-    for char, delay in type_text(text, speed, typo_rate):
+    for char, delay, needs_shift, is_word_start in type_text(text, speed, typo_rate):
+        # Shiftキーサウンド再生（大文字の前）
+        if needs_shift and shift_sound_callback:
+            shift_sound_callback()
+
         # サウンド再生
         if sound_callback:
-            sound_callback(char)
+            sound_callback(char, is_word_start)
 
         # 文字送信
         send_key(char, target)

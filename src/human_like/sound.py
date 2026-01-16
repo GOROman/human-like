@@ -35,6 +35,19 @@ SOUND_FILES = {
 }
 
 
+# ボリュームのランダム範囲
+VOLUME_RANGE = (0.7, 1.0)
+
+# 小指で打つキー（音量が小さくなる）
+PINKY_KEYS = set("qazQAZ1!`~pP;:'/\"?[{]}\\|0)-_=+")
+
+# 小指キーのボリューム倍率
+PINKY_VOLUME_MULTIPLIER = 0.6
+
+# 単語先頭のボリュームブースト
+WORD_START_VOLUME_BOOST = 1.2
+
+
 class AudioMixer:
     """複数の音声を同時にMix再生するミキサー"""
 
@@ -50,7 +63,7 @@ class AudioMixer:
         self.samplerate = samplerate
         self.channels = channels
         self.sounds: Dict[str, "np.ndarray"] = {}
-        self.playing: List[Tuple["np.ndarray", int]] = []
+        self.playing: List[Tuple["np.ndarray", int, float]] = []  # (data, pos, volume)
         self.lock = threading.Lock()
         self.stream: Optional["sd.OutputStream"] = None
 
@@ -75,13 +88,13 @@ class AudioMixer:
         outdata.fill(0)
         with self.lock:
             active = []
-            for data, pos in self.playing:
+            for data, pos, volume in self.playing:
                 end = min(pos + frames, len(data))
                 length = end - pos
                 if length > 0:
-                    outdata[:length] += data[pos:end]
+                    outdata[:length] += data[pos:end] * volume
                 if end < len(data):
-                    active.append((data, end))
+                    active.append((data, end, volume))
             self.playing = active
 
         drive = 1.5
@@ -104,12 +117,12 @@ class AudioMixer:
             self.stream.close()
             self.stream = None
 
-    def play(self, name: str) -> bool:
+    def play(self, name: str, volume: float = 1.0) -> bool:
         """サウンドを再生"""
         if name not in self.sounds:
             return False
         with self.lock:
-            self.playing.append((self.sounds[name], 0))
+            self.playing.append((self.sounds[name], 0, volume))
         return True
 
     def stop_all(self) -> None:
@@ -139,6 +152,21 @@ class SoundDaemon:
                 print(f"Warning: {filepath} not found", file=sys.stderr)
         return loaded
 
+    def get_volume_for_char(self, char: str, is_word_start: bool = False) -> float:
+        """文字に応じたボリュームを計算"""
+        base_volume = random.uniform(*VOLUME_RANGE)
+
+        # 単語の先頭は少し強く打つ
+        if is_word_start:
+            base_volume *= WORD_START_VOLUME_BOOST
+
+        # 小指キーは音量が小さい
+        if char in PINKY_KEYS:
+            base_volume *= PINKY_VOLUME_MULTIPLIER
+
+        # 最大1.0に制限
+        return min(base_volume, 1.0)
+
     def get_sound_for_char(self, char: str) -> Optional[str]:
         """文字に応じた音声キーを選択"""
         chance = random.randint(0, 99)
@@ -147,6 +175,8 @@ class SoundDaemon:
             return "space_mid" if chance < 70 else "space_hard"
         elif char == "\n":
             return "enter_mid" if chance < 70 else "enter_hard"
+        elif char == "\x7f":  # Backspace
+            return "single_gentle"
         else:
             if chance < 50:
                 return "single_mid"
@@ -168,8 +198,18 @@ class SoundDaemon:
 
                 if cmd == "play":
                     char = request.get("char", "")
+                    is_word_start = request.get("word_start", False)
                     sound_key = self.get_sound_for_char(char)
-                    if sound_key and self.mixer.play(sound_key):
+                    volume = self.get_volume_for_char(char, is_word_start)
+                    if sound_key and self.mixer.play(sound_key, volume):
+                        conn.send(b"ok")
+                    else:
+                        conn.send(b"no sound")
+
+                elif cmd == "play_shift":
+                    # Shiftキーの音（大文字入力前に呼ばれる）
+                    volume = random.uniform(*VOLUME_RANGE) * PINKY_VOLUME_MULTIPLIER
+                    if self.mixer.play("shift", volume):
                         conn.send(b"ok")
                     else:
                         conn.send(b"no sound")
@@ -281,9 +321,15 @@ def is_daemon_running() -> bool:
     return response == "pong"
 
 
-def play_sound(char: str) -> bool:
+def play_sound(char: str, is_word_start: bool = False) -> bool:
     """文字に対応するサウンドを再生"""
-    response = send_command({"cmd": "play", "char": char})
+    response = send_command({"cmd": "play", "char": char, "word_start": is_word_start})
+    return response == "ok"
+
+
+def play_shift_sound() -> bool:
+    """Shiftキーのサウンドを再生"""
+    response = send_command({"cmd": "play_shift"})
     return response == "ok"
 
 

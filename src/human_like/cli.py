@@ -10,6 +10,7 @@ import click
 from .sound import (
     get_sounds_dir,
     is_daemon_running,
+    play_shift_sound,
     play_sound,
     start_daemon,
     stop_daemon,
@@ -69,6 +70,7 @@ def main(
 
     # サウンドの設定
     sound_callback = None
+    shift_sound_callback = None
     if sound:
         sounds_dir = get_sounds_dir()
         if sounds_dir.exists():
@@ -76,6 +78,7 @@ def main(
                 start_daemon(str(sounds_dir))
             if is_daemon_running():
                 sound_callback = play_sound
+                shift_sound_callback = play_shift_sound
             else:
                 click.echo("Warning: Could not start sound daemon", err=True)
         else:
@@ -83,7 +86,7 @@ def main(
 
     # テキスト送信
     try:
-        send_text(input_text, target=target, speed=speed, typo_rate=typo, sound_callback=sound_callback)
+        send_text(input_text, target=target, speed=speed, typo_rate=typo, sound_callback=sound_callback, shift_sound_callback=shift_sound_callback)
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)

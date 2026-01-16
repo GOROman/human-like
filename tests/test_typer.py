@@ -102,13 +102,14 @@ class TestTypeText:
     def test_yields_all_chars(self):
         text = "hello"
         result = list(type_text(text))
-        chars = [c for c, _ in result]
+        # type_text returns (char, delay, needs_shift, is_word_start)
+        chars = [c for c, _, _, _ in result]
         assert "".join(chars) == text
 
     def test_yields_delays(self):
         text = "hi"
         result = list(type_text(text))
-        for char, delay in result:
+        for char, delay, needs_shift, is_word_start in result:
             assert delay > 0
 
     def test_invalid_speed_raises_error(self):
@@ -125,11 +126,11 @@ class TestTypeText:
     def test_typo_includes_backspace(self):
         # With 100% typo rate, should see backspaces
         result = list(type_text("ab", typo_rate=1.0))
-        chars = [c for c, _ in result]
+        chars = [c for c, _, _, _ in result]
         assert "\x7f" in chars  # Backspace character
 
     def test_no_typo_on_whitespace(self):
         # Spaces and newlines should not trigger typos
         result = list(type_text(" \n", typo_rate=1.0))
-        chars = [c for c, _ in result]
+        chars = [c for c, _, _, _ in result]
         assert "\x7f" not in chars
