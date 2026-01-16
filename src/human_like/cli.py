@@ -24,6 +24,7 @@ from .tmux import send_text
 @click.option("-s", "--speed", default=1.0, type=click.FloatRange(min=0.01), help="Speed multiplier (higher = faster, must be > 0)")
 @click.option("--typo", default=0.0, type=click.FloatRange(min=0.0, max=1.0), help="Typo rate (0.0-1.0, e.g., 0.05 for 5%)")
 @click.option("--sound/--no-sound", default=True, help="Enable/disable keyboard sounds")
+@click.option("--enter/--no-enter", default=True, help="Add Enter key at end (default: enabled)")
 @click.option("--daemon", type=click.Choice(["start", "stop", "status"]), help="Manage sound daemon")
 def main(
     text: Optional[str],
@@ -32,6 +33,7 @@ def main(
     speed: float,
     typo: float,
     sound: bool,
+    enter: bool,
     daemon: Optional[str],
 ) -> None:
     """
@@ -60,6 +62,10 @@ def main(
         click.echo("Error: No input text provided", err=True)
         click.echo("Usage: human-like [OPTIONS] [TEXT]", err=True)
         sys.exit(1)
+
+    # 最後に改行を追加
+    if enter and not input_text.endswith("\n"):
+        input_text += "\n"
 
     # サウンドの設定
     sound_callback = None
