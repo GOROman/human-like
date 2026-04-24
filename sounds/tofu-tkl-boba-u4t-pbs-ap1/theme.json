@@ -1,0 +1,14 @@
+{
+    "name": "KBDfans TOFU TKL Boba U4T PBS AP1",
+    "description": "KBDfans TOFU TKL Boba U4T PBS AP1 sounds",
+    "sounds": {
+        "single_mid": "Single-Mid.mp3",
+        "single_hard": "Single-Hard.mp3",
+        "single_gentle": "Single-Gentle.mp3",
+        "enter_mid": "Enter-Mid.mp3",
+        "enter_hard": "Enter-Hard.mp3",
+        "space_mid": "Space-Mid.mp3",
+        "space_hard": "Space-Hard.mp3",
+        "shift": "Shift.mp3"
+    }
+}

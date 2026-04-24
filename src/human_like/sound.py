@@ -9,6 +9,7 @@ import signal
 import socket
 import sys
 import threading
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
@@ -22,7 +23,21 @@ _UID = os.getuid()
 SOCKET_PATH = f"/tmp/human-like-sound-{_UID}.sock"
 PID_FILE = f"/tmp/human-like-sound-{_UID}.pid"
 
-# 音声ファイルのマッピング
+# テーマ管理の定数
+THEME_MANIFEST = "theme.json"
+DEFAULT_THEME = "default"
+REQUIRED_SOUNDS = frozenset([
+    "single_mid",
+    "single_hard",
+    "single_gentle",
+    "enter_mid",
+    "enter_hard",
+    "space_mid",
+    "space_hard",
+    "shift",
+])
+
+# 音声ファイルのマッピング（デフォルトテーマ用）
 SOUND_FILES = {
     "single_mid": "PC-Keyboard06-04(Single-Mid).mp3",
     "single_hard": "PC-Keyboard06-05(Single-Hard).mp3",
@@ -33,6 +48,15 @@ SOUND_FILES = {
     "space_hard": "PC-Keyboard06-11(Space-Hard).mp3",
     "shift": "PC-Keyboard06-12(Shift).mp3",
 }
+
+
+@dataclass
+class ThemeConfig:
+    """テーマ設定"""
+
+    name: str
+    description: str
+    sounds: Dict[str, str]
 
 
 # ボリュームのランダム範囲
@@ -134,8 +158,9 @@ class AudioMixer:
 class SoundDaemon:
     """サウンドデーモン"""
 
-    def __init__(self, sounds_dir: str):
+    def __init__(self, sounds_dir: str, sound_files: Optional[Dict[str, str]] = None):
         self.sounds_dir = Path(sounds_dir)
+        self.sound_files = sound_files if sound_files is not None else SOUND_FILES
         self.socket: Optional[socket.socket] = None
         self.running = False
         self.mixer = AudioMixer()
@@ -143,7 +168,7 @@ class SoundDaemon:
     def load_all_sounds(self) -> int:
         """全ての音声ファイルをロード"""
         loaded = 0
-        for name, filename in SOUND_FILES.items():
+        for name, filename in self.sound_files.items():
             filepath = self.sounds_dir / filename
             if filepath.exists():
                 if self.mixer.load_sound(name, str(filepath)):
@@ -333,7 +358,11 @@ def play_shift_sound() -> bool:
     return response == "ok"
 
 
-def start_daemon(sounds_dir: str, foreground: bool = False) -> bool:
+def start_daemon(
+    sounds_dir: str,
+    foreground: bool = False,
+    sound_files: Optional[Dict[str, str]] = None,
+) -> bool:
     """デーモンを起動"""
     if is_daemon_running():
         return True
@@ -344,7 +373,7 @@ def start_daemon(sounds_dir: str, foreground: bool = False) -> bool:
         return False
 
     if foreground:
-        daemon = SoundDaemon(str(sounds_path))
+        daemon = SoundDaemon(str(sounds_path), sound_files)
         daemon.run()
         return True
 
@@ -365,7 +394,7 @@ def start_daemon(sounds_dir: str, foreground: bool = False) -> bool:
         sys.stdout = open(os.devnull, "w")
         sys.stderr = open(os.devnull, "w")
 
-        daemon = SoundDaemon(str(sounds_path))
+        daemon = SoundDaemon(str(sounds_path), sound_files)
         daemon.run()
         return True
 
@@ -379,6 +408,68 @@ def stop_daemon() -> bool:
     return response == "bye"
 
 
-def get_sounds_dir() -> Path:
-    """デフォルトのsoundsディレクトリを取得"""
+def get_themes_dir() -> Path:
+    """テーマディレクトリを取得"""
     return Path(__file__).parent.parent.parent / "sounds"
+
+
+def list_themes() -> List[str]:
+    """利用可能なテーマの一覧を取得"""
+    themes_dir = get_themes_dir()
+    if not themes_dir.exists():
+        return []
+
+    themes = []
+    for entry in themes_dir.iterdir():
+        if entry.is_dir() and (entry / THEME_MANIFEST).exists():
+            themes.append(entry.name)
+
+    return sorted(themes)
+
+
+def load_theme_config(theme_name: str) -> Optional[ThemeConfig]:
+    """テーマ設定をロード"""
+    theme_dir = get_themes_dir() / theme_name
+    manifest_path = theme_dir / THEME_MANIFEST
+
+    if not manifest_path.exists():
+        return None
+
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        name = data.get("name", "")
+        description = data.get("description", "")
+        sounds = data.get("sounds", {})
+
+        # 必須サウンドがすべて定義されているか確認
+        if not REQUIRED_SOUNDS.issubset(sounds.keys()):
+            print(
+                f"Error: Theme '{theme_name}' missing required sounds", file=sys.stderr
+            )
+            return None
+
+        return ThemeConfig(name=name, description=description, sounds=sounds)
+
+    except Exception as e:
+        print(f"Error loading theme '{theme_name}': {e}", file=sys.stderr)
+        return None
+
+
+def get_theme_sounds_dir(theme_name: str) -> Path:
+    """テーマのサウンドディレクトリを取得"""
+    return get_themes_dir() / theme_name
+
+
+def get_theme_sound_files(theme_name: str) -> Optional[Dict[str, str]]:
+    """テーマのサウンドファイルマッピングを取得"""
+    config = load_theme_config(theme_name)
+    if config is None:
+        return None
+    return config.sounds
+
+
+def get_sounds_dir() -> Path:
+    """デフォルトのsoundsディレクトリを取得（後方互換性のため）"""
+    return get_theme_sounds_dir(DEFAULT_THEME)

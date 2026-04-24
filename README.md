@@ -1,5 +1,7 @@
 # Human Like Typing
 
+[日本語版README](README.ja.md)
+
 A Python application that types text into tmux panes with human-like delays and keyboard sound effects.
 
 ## Installation
@@ -35,6 +37,9 @@ human-like --typo 0.1 "text"
 # Disable sound effects
 human-like --no-sound "text"
 
+# Use specific sound theme
+human-like --theme default "text"
+
 # Send to specific tmux pane
 human-like -t right "text"
 human-like -t %1 "text"
@@ -52,9 +57,14 @@ human-like --daemon status
 # Manually start daemon
 human-like --daemon start
 
+# Start daemon with specific theme
+human-like --theme mytheme --daemon start
+
 # Stop daemon
 human-like --daemon stop
 ```
+
+Note: The daemon uses the theme specified at startup. To switch themes, stop and restart the daemon.
 
 ## Features
 
@@ -94,9 +104,50 @@ When `--typo` is enabled:
 - Sounds mix naturally when typing fast
 - Auto-starts when needed, runs in background
 
+## Sound Themes
+
+### List Available Themes
+
+```bash
+human-like --theme list
+```
+
+This displays all available sound themes. The default theme is marked with an asterisk (*).
+
+### Creating Custom Themes
+
+You can create your own sound themes by adding a new directory under `sounds/`:
+
+1. Create a theme directory (e.g., `sounds/mytheme/`)
+2. Add a `theme.json` file with the following structure:
+
+```json
+{
+    "name": "My Custom Theme",
+    "description": "Description of your theme",
+    "sounds": {
+        "single_mid": "key-press-mid.mp3",
+        "single_hard": "key-press-hard.mp3",
+        "single_gentle": "key-press-gentle.mp3",
+        "enter_mid": "enter-mid.mp3",
+        "enter_hard": "enter-hard.mp3",
+        "space_mid": "space-mid.mp3",
+        "space_hard": "space-hard.mp3",
+        "shift": "shift.mp3"
+    }
+}
+```
+
+3. Place your MP3 sound files in the same directory
+4. Use the theme: `human-like --theme mytheme "text"`
+
+All 8 sound keys (`single_mid`, `single_hard`, `single_gentle`, `enter_mid`, `enter_hard`, `space_mid`, `space_hard`, `shift`) are required.
+
 ## Sound Files
 
-The `sounds/` directory contains keyboard sound effects:
+### Default Theme
+
+The default theme is located in `sounds/default/` directory:
 
 | File | Description |
 |------|-------------|

@@ -1,0 +1,14 @@
+{
+    "name": "Default Mechanical Keyboard",
+    "description": "Standard PC keyboard sounds",
+    "sounds": {
+        "single_mid": "PC-Keyboard06-04(Single-Mid).mp3",
+        "single_hard": "PC-Keyboard06-05(Single-Hard).mp3",
+        "single_gentle": "PC-Keyboard06-06(Single-Gentle).mp3",
+        "enter_mid": "PC-Keyboard06-08(Enter-Mid).mp3",
+        "enter_hard": "PC-Keyboard06-09(Enter-Hard).mp3",
+        "space_mid": "PC-Keyboard06-10(Space-Mid).mp3",
+        "space_hard": "PC-Keyboard06-11(Space-Hard).mp3",
+        "shift": "PC-Keyboard06-12(Shift).mp3"
+    }
+}
